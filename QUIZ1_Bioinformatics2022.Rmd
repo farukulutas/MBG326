@@ -1,0 +1,97 @@
+---
+title: "Quiz 1"
+author: "Ahmet Faruk Ulutaş"
+date: "2022-10-13"
+output:
+  html_document:
+    toc: yes
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Question 1
+
+1) Create a vector that contains 50 random numbers selected from a normal distribution with a mean of 5 and
+a) calculate the mean, median, and standard deviation of the values in your vector 
+b) plot a histogram for your vector and label the x and y axes.
+
+hint = use rnorm function. for help check ?rnorm in console to see the inputs. 
+
+```{r, include=FALSE}
+#Please write your code here
+numbers = rnorm(50, mean=5);
+mean1 = mean(numbers)
+median1 = median(numbers)
+sd1 = sd(numbers)
+hist(numbers, xlab = "Numbers (X)", ylab = "Frequency (Y)")
+```
+
+## Question 2
+
+2)	Please perform the above steps for another vector made of 500 random numbers selected from a normal distribution.
+```{r, include=FALSE}
+#Please write your code here
+numbers = rnorm(505, mean=0, sd=1);
+mean2 = mean(numbers)
+median2 = median(numbers)
+sd2 = sd(numbers)
+hist(numbers, xlab = "Numbers (X)", ylab = "Frequency (Y)")
+```
+
+## Question 3
+
+3)	Compare the mean-median-standard deviations of the question 1 with question 2. Are they different? Why or Why not?
+
+```{r}
+#comments
+#The results of both are different because the distribution patterns, the number of samples and the average have changed.
+```
+
+## Question 4
+
+4)	Run the code to generate list1 and then write the code to a) get the element in the 2nd row and 2nd column of the matrix b) the first element of the list1. 
+
+```{r, include=FALSE}
+list1 = list(list("a","b"), matrix(c("c","d","e","f"),nrow = 2))
+#a) Please write your code here
+#list1[2,2]
+#b) Please write your code here
+#list[1]
+```
+
+## Question 5
+
+Read in the expression file named quiz_exp_file.csv into your workspace as data.frame object. Make sure that you assign a name (of your choice) to this object. Use function(s) to return the number of genes and samples.
+```{r, include=FALSE}
+#Please write your code here
+data <- read.csv("quiz_exp_file.csv")
+# how many genes
+nrow(data)
+# how many samples
+(length(data) - 1) * (nrow(data))
+```
+## Question 6
+
+Subset your data.frame object into 2 separate data.frames, composed of Normal samples and Tumor samples, respectively. Assign a proper name (of your choice) to each newly created data.frame object. Perform a boxplot for each dataframe separately and compare them with respect to their median and distribution.
+
+
+```{r, include=FALSE}
+#Please write your code here
+first_subset <- data[c(1,2:11)]
+second_subset <- data[c(1,12:length(data))]
+#boxplot(first_subset)
+#boxplot(second_subset)
+##comments
+```
+
+## Question 7
+
+Perform a t-test using t.test() function below for the expression of a gene of your choice obtained from the expression dataframe(s) and explain whether the gene you selected is significantly differentially expressed or not. 
+```{r, include=FALSE}
+#write your code here
+##write your code
+```

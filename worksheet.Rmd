@@ -1,0 +1,111 @@
+---
+title: "worksheet"
+author: "Ahmet Faruk Ulutaş"
+output:
+  html_document:
+    theme: united
+date: "2022-10-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## First thing is to call the libraries need in the worksheet
+##call ggplot2 and dplry
+
+```{r message=FALSE}
+library(ggplot2)
+library(dplyr)
+```
+
+## msleep contains ....
+## msleep contains the mammals sleep dataset
+
+```{r message=FALSE}
+data(msleep)
+?msleep
+head(msleep)
+```
+
+## how many rows and columns the data have?
+## The data have 83 rows and 11 columns
+
+```{r message=FALSE}
+sleepData <- select(msleep, name, sleep_total)
+head(sleepData)
+```
+
+## what does "select" do? what does sleepData contains?
+## Columns' names and kinds are used to choose subsets (sleep total in this code). A table in sleepData has 83 rows and 2 columns (name of the animals and their total amount of sleep in hours)
+
+```{r message=FALSE}
+head(select(msleep, starts_with("sl")))
+```
+
+## does the above statement works on rows or columns? which dataset it uses? Explain.
+## The code above functions on columns. It utilizes the msleep dataset but only displays the "sl"-named columns (sleep total, sleep rem, and sleep cycle).
+
+## Another important function in dplyr is to filter... 
+## Another important function in dplyr is to filter subsets rows using column values.
+
+```{r message=FALSE}
+filter(msleep, sleep_total >= 16) 
+filter(msleep, sleep_total >= 16, bodywt >= 1) 
+filter(msleep, order %in% c("Perissodactyla", "Primates"))
+```
+
+## what does %in% do? what happens if you do not provide a vector next to it?
+## If a match exists or not, %in% returns a logical vector for the left operand. If a vector is not given next to it, a syntax error occurs.
+
+## pipe operator
+
+```{r message=FALSE}
+msleep %>%
+  select(name, sleep_total) %>%
+  head()
+```
+
+## what does %>% do? Compare with select(msleep, name, sleep_total)
+## The expression %>% forwards an object to a function or call expression. head(select(msleep, name, sleep_total)) is the same as the code above.
+
+## when you use %>% what is it doing?
+## Msleep is piped into the function select, which is subsequently piped into the function head via %>%.
+
+## arrange()
+
+```{r message=FALSE}
+msleep %>% 
+  select(name, order, sleep_total) %>% 
+  arrange(order, sleep_total) %>% 
+  head()
+```
+## what does arrange do?
+## Arrange groups rows according to column values. The rows are arranged here according to order and sleep_total.
+
+## mutate()
+
+```{r message=FALSE}
+msleep %>% 
+  mutate(rem_proportion = sleep_rem / sleep_total) %>% 
+  head()
+```
+
+## what does mutate do?
+## Create, modify, and remove are all possible using mutate. Here, it adds a "rem proportion" field to the msleep table.
+
+## summarise()
+
+```{r message=FALSE}
+msleep %>% 
+  summarise(avg_sleep = mean(sleep_total), 
+            min_sleep = min(sleep_total),
+            max_sleep = max(sleep_total),
+            total = n())
+```
+
+## explain what does summarize do?
+## A new data frame is created by summarise. Here, it generates a data frame with the animals' average, minimal, and maximal sleep durations.
+
+## Write a short paragraph explaining the results from msleep, e.g., how much the animals sleep, what is the minimum and max. amount of sleep etc.
+## The average amount of sleep for animals is 10.4 hours. The giraffe requires 1.9 hours of sleep every night as a minimum. The small brown bat sleeps for a maximum of 19.9 hours every night.

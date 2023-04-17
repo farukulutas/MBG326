@@ -1,0 +1,41 @@
+# 1
+vec1 <= 5:30
+
+# 2
+n_vec1 = length(vec1)
+
+# 3
+vec1[4]
+
+# 4
+sum(vec1)
+
+# 5
+vec1[n_vec1] + vec1[n_vec1-1] + vec1[n_vec1-2]
+
+# 6
+mat1 <- matrix(vec1, nrow = 2, byrow = TRUE)
+
+# 7
+char1<- c('actb','tuba','gapdh')
+
+# 8
+colnames(mat1) <- char1
+
+# 9
+mat1[1, 2:3]
+
+# 10
+mat1[2,]
+
+# 11
+lis1 <- list(vec1, mat1)
+
+# 12
+attributes(lis1)
+
+# 13
+dataframe <- data.frame(unlist(lis1))
+
+# 14
+rownames(dataframe) <- c("patient1","patient2")

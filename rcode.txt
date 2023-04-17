@@ -1,0 +1,177 @@
+----------------------------------------------
+  #All the codes below are adapted from http://chagall.med.cornell.edu/RNASEQcourse/Intro2RNAseq.pdf 
+  ---------------------------------------------
+  
+  #First part- Analysis  
+  
+  
+  #install DESeq2 package from biocondcutor website
+  #source("https://bioconductor.org/biocLite.R")
+  BiocManager::install("DESeq2")
+
+# Hypothesis
+# ERbeta1 isoform and ERbeta5 isoform overexpression affect the glioma cell line transcriptome
+
+#Please, remember to set your working directory correctly.
+getwd()
+setwd("D:/Users/faruk.ulutas-ug/Desktop")
+
+# READ COUNTS
+erb1_5 <- read.delim("GSM2794667_U87_ERB1_5_Genes_ReadCount.txt", header= FALSE)
+erb1_6 <- read.delim("GSM2794668_U87_ERB1_6_Genes_ReadCount.txt", header= FALSE)
+erb5_7 <- read.delim("GSM2794669_U87_ERB5_7_Genes_ReadCount.txt", header= FALSE)
+erb5_8 <- read.delim("GSM2794670_U87_ERB5_8_Genes_ReadCount.txt", header= FALSE)
+
+# MERGE READ COUNTS
+merged_erb1 <- merge(erb1_5, erb1_6, by = "V1")
+merged_erb5 <- merge(erb5_7, erb5_8, by = "V1")
+merged_all <- merge(merged_erb1, merged_erb5, by = "V1")
+colnames(merged_all) <- c("GENEID", "C1", "C2", "KO1", "KO2")
+readCounts <- merged_all
+
+#make sure that the library is loaded.
+library(DESeq2)
+
+# We need to keep gene names as row names
+row.names(readCounts)<-readCounts$GENEID
+head(readCounts$GENEID)
+
+#Before starting to Differentially Expressed Genes(DEGs) analysis, we want to exclude the columns without read counts
+readCounts<-readCounts[,-1]
+head(readCounts)
+
+#naming the samples is something important (C:Control, KO: knock-out)
+names(readCounts)<-c("C1","C2","KO1","KO2")
+head(readCounts)
+View(readCounts) #to see what you have done so far
+
+#It is important to design analysis. In this case, we want to see the difference betweeen contol and the erb1 knock-out
+sample.design<-data.frame(condition=c(rep("C",2),rep("KO",2)),row.names=names(readCounts))
+View(sample.design)#to see what you have done so far
+
+help("DESeqDataSetFromMatrix")
+ddset<-DESeqDataSetFromMatrix(countData = readCounts,colData = sample.design,design=~condition)
+head(ddset)
+dim(ddset)#this ddset is object contains count data in assay, condition (labels), specifies design
+#Discard the genes without any counts in any of the conditions
+ddset<-ddset[rowSums(counts(ddset))>0,]
+dim(ddset)
+##QUESTION 1: Why do we get rid of rowsums=0 please explain.
+
+#Make sure that the control is our reference but not the treatment
+help("relevel")
+head(colData(ddset)$condition)
+colData(ddset)$condition<-relevel(colData(ddset)$condition,"C")
+
+help(DESeq)
+#DEseq data analysis in one code including size factor normalization, dispersion estimation and wald-statistics
+ddset<-DESeq(ddset)
+
+#To get the results
+Result<-results(ddset, pAdjustMethod = "BH")
+View(Result)#to see what you have done so far
+##QUESTION 2: Find out how many rows are less than 0.05 as their adjusted p-val; 
+## write the code to find out and report the number.
+
+# 4) Get logFC, pval and adjpval values for all gene genes based on your new hypothesis
+logFC <- Result$log2FoldChange
+pval <- Result$pvalue
+adjpval <- Result$padj
+
+#To write the results as a txt file. 
+#write.table(Result,"ConsequencesOfErb1KnockingOut.txt")
+
+Results_15 <- Result[c("log2FoldChange", "pvalue", "padj")]
+
+wt_vs_ko <- read.table("wt_vs_ko.txt", header= TRUE)
+Results_16 <- wt_vs_ko[c("log2FoldChange", "pvalue", "padj")]
+mergedNewResults <- merge.data.frame(Results_15, Results_16, by = "row.names")
+
+plot(mergedNewResults$log2FoldChange.x, mergedNewResults$log2FoldChange.y)
+#------------------------------------------------------------------------------
+
+#Second Part-Visualization
+
+#Download the required libraries
+source("https://bioconductor.org/biocLite.R")
+BiocManager::install("vsn")
+library(vsn)
+library(ggplot2)
+
+install.packages("devtools")
+library(devtools)
+remotes::install_github('vqv/ggbiplot')
+library(ggbiplot)
+
+#size factors will me measured
+dseqdataset<-estimateSizeFactors(ddset)
+sizeFactors(dseqdataset)
+help(estimateSizeFactors)
+## QUESTION3: What do these size factors indicate briefly explain.
+##
+normalizedSFCounts<-counts(dseqdataset,normalized=TRUE)
+head(normalizedSFCounts)
+## QUESTION 4: How the normalized counts different from the raw counts
+## please demonstrate and comment on
+
+#algorithms like clustering work better in log scaled version of normalized counts.So,we need to trasnform them into log scale.
+logOfNormalizedCounts<-log2(normalizedSFCounts+1)
+head(logOfNormalizedCounts)
+plot(logOfNormalizedCounts[ ,1:2] , cex =.1 , main = "Normalized log2 ( read counts )")
+## QUESTION 5: draw the boxplots of normalizedSFCounts and logOfNormalizedCounts
+## and comment on the figures.
+
+#varience shrinkage: low but variable read counts resembles high and variable read counts to not miss any significant varience between samples
+RlogDds<-rlog(ddset,blind=TRUE)
+help(rlog)
+head(RlogDds)
+RlogNormalized<-assay(RlogDds)
+head(RlogNormalized)
+plot(RlogNormalized[ ,1:2] , cex =.1 , main = "rNormalized log2 ( read counts )")
+## QUESTION 6: What is the difference between RlogDds and RlogNormalized explain.
+##
+## QUESTION 7: Is LogOfNormalizedCounts different from RlogNormalized? 
+## Compare these two matrices and explain.
+
+
+#Principal Component Analysis
+help(plotPCA)
+Overallpca<-plotPCA(RlogDds)
+pca<-Overallpca+theme_light()+ggtitle("rlog Transformed Read Counts")
+plot(pca)
+
+# if ggplot2 is not working
+
+pca2<-prcomp(t(logOfNormalizedCounts))
+
+plot(pca2$x[,1:2], col=c(1,1,2,2), pch=16, main = 'log Transformed Read Counts', xlab= paste("PC1 % explained var = ", round((pca2$sdev^2)[1]*100/sum(pca2$sdev^2), digits=2)),ylab= paste("PC2 % explained var = ", round((pca2$sdev^2)[2]*100/sum(pca2$sdev^2), digits=2)))
+legend("topleft",legend= c("Control", "KO"), col=1:2, pch=16, cex=0.8)
+##QUESTION 8: Please comment on the PCA about the samples and their
+## distribution among groups.
+
+#clustering(dendogram)
+distBetw<-as.dist(1-cor(RlogNormalized,method="pearson"))
+plot(hclust(distBetw),labels=colnames(RlogNormalized),main="rlog Transformed Read Counts \n distance: pearson correlation")
+## QUESTION 9: Does hclust suppor the findings from PCA? Explain
+
+#heatmap based on DESeq2 analysis
+install.packages("NMF")
+library(NMF)
+
+deseq<-DESeq(dseqdataset)
+result <- results(deseq, independentFiltering = TRUE , alpha = 0.05)
+
+sorted.Dseq<- result[order(result$pvalue), ]
+DGEgenes <- rownames(subset(sorted.Dseq , pvalue < 0.0005))
+heatmapDGEgenes <- logOfNormalizedCounts[DGEgenes , ]
+help(aheatmap)
+
+
+#to see the heatmap
+aheatmap(heatmapDGEgenes ,Rowv = TRUE , Colv = TRUE,distfun = "euclidean", hclustfun = "average",scale="row")
+
+##QUESTION 10: generate the heatmap using RlogNormalized and comment
+## on if there are differences
+##
+# if NMF or ggplot is not working
+heatmap(heatmapDGEgenes)

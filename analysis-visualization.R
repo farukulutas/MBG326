@@ -1,0 +1,172 @@
+----------------------------------------------
+  #All the codes below are adapted from http://chagall.med.cornell.edu/RNASEQcourse/Intro2RNAseq.pdf 
+  ---------------------------------------------
+  
+  #First part- Analysis  
+  
+  
+  #install DESeq2 package from biocondcutor website
+  #source("https://bioconductor.org/biocLite.R")
+  BiocManager::install("DESeq2")
+
+#make sure that the library is loaded.
+library(DESeq2)
+
+#Please, remember to set your working directory correctly.
+getwd()
+setwd("D:/Users/TEMP.PCLABS/Desktop")
+#read the read counts from the emrged table (including gene names and name of each sample)
+#header TRUE becasue we have ID and sample names and we'll use them
+readCounts<-read.table("Erb1KO_vs_control.txt", header=TRUE) 
+
+# We need to keep gene names as row names
+row.names(readCounts)<-readCounts$GeneID
+head(readCounts$GeneID)
+
+#Before starting to Differentially Expressed Genes(DEGs) analysis, we want to exclude the columns without read counts
+readCounts<-readCounts[,-1]
+head(readCounts)
+
+#naming the samples is something important (C:Control, KO: knock-out)
+names(readCounts)<-c("C1","C2","KO1","KO2")
+head(readCounts)
+View(readCounts) #to see what you have done so far
+
+#It is important to design analysis. In this case, we want to see the difference betweeen contol and the erb1 knock-out
+sample.design<-data.frame(condition=c(rep("C",2),rep("KO",2)),row.names=names(readCounts))
+View(sample.design)#to see what you have done so far
+
+help("DESeqDataSetFromMatrix")
+ddset<-DESeqDataSetFromMatrix(countData = readCounts,colData = sample.design,design=~condition)
+head(ddset)
+dim(ddset)#this ddset is object contains count data in assay, condition (labels), specifies design
+#Discard the genes without any counts in any of the conditions
+ddset<-ddset[rowSums(counts(ddset))>0,]
+dim(ddset)
+##QUESTION 1: Why do we get rid of rowsums=0 please explain.
+## to exclude any rows that do not have any count data, as these rows would not provide any useful information for analysis.
+
+#Make sure that the control is our reference but not the treatment
+help("relevel")
+head(colData(ddset)$condition)
+colData(ddset)$condition<-relevel(colData(ddset)$condition,"C")
+
+help(DESeq)
+#DEseq data analysis in one code including size factor normalization, dispersion estimation and wald-statistics
+ddset<-DESeq(ddset)
+
+#To get the results
+Result<-results(ddset, pAdjustMethod = "BH")
+View(Result)#to see what you have done so far
+##QUESTION 2: Find out how many rows are less than 0.05 as their adjusted p-val; 
+## write the code to find out and report the number.
+count = sum(Result[["adjusted p-value"]] < 0.05)
+print(paste("Number of rows with an adjusted p-value less than 0.05:", count))
+
+#To write the results as a txt file. 
+write.table(Result,"ConsequencesOfErb1KnockingOut.txt")
+
+
+#------------------------------------------------------------------------------
+
+#Second Part-Visualization
+
+#Download the required libraries
+source("https://bioconductor.org/biocLite.R")
+BiocManager::install("vsn")
+library(vsn)
+library(ggplot2)
+
+install.packages("devtools")
+library(devtools)
+remotes::install_github('vqv/ggbiplot')
+library(ggbiplot)
+
+#size factors will me measured
+dseqdataset<-estimateSizeFactors(ddset)
+sizeFactors(dseqdataset)
+help(estimateSizeFactors)
+## QUESTION3: What do these size factors indicate briefly explain.
+## to account for differences in the amount of RNA present in different samples.
+## used to calculate size factors for RNA-seq data. This function takes a matrix or data frame of count data as input and returns a vector of size factors, one for each sample.
+normalizedSFCounts<-counts(dseqdataset,normalized=TRUE)
+head(normalizedSFCounts)
+## QUESTION 4: How the normalized counts different from the raw counts
+## please demonstrate and comment on
+## Normalized counts are counts that have been adjusted while raw counts are unadjusted for differences in the amount of RNA present in different samples.
+# normalized counts
+normalizedSFCounts
+# raw counts
+table(dseqdataset)
+hist(dseqdataset)
+#algorithms like clustering work better in log scaled version of normalized counts.So,we need to trasnform them into log scale.
+logOfNormalizedCounts<-log2(normalizedSFCounts+1)
+head(logOfNormalizedCounts)
+plot(logOfNormalizedCounts[ ,1:2] , cex =.1 , main = "Normalized log2 ( read counts )")
+## QUESTION 5: draw the boxplots of normalizedSFCounts and logOfNormalizedCounts
+## and comment on the figures.
+## logOfNormalizedCount is scaled one of the normalizedSFCounts. Thus, small differences are more apparent.
+plotCounts(normalizedSFCounts, intgroup = "condition")
+plotCounts(logOfNormalizedCounts, intgroup = "condition")
+
+#varience shrinkage: low but variable read counts resembles high and variable read counts to not miss any significant varience between samples
+RlogDds<-rlog(ddset,blind=TRUE)
+help(rlog)
+head(RlogDds)
+RlogNormalized<-assay(RlogDds)
+head(RlogNormalized)
+plot(RlogNormalized[ ,1:2] , cex =.1 , main = "rNormalized log2 ( read counts )")
+## QUESTION 6: What is the difference between RlogDds and RlogNormalized explain.
+## The main difference between these two measures is that RlogDds is a measure of the relative change in gene expression between two samples, while RlogNormalized is a measure of the absolute expression level of a gene in a sample. This means that RlogDds is useful for comparing the gene expression levels of two samples, while RlogNormalized is useful for understanding the expression level of a gene in a single sample.
+## QUESTION 7: Is LogOfNormalizedCounts different from RlogNormalized? 
+## Compare these two matrices and explain.
+## LogOfNormalizedCounts is a measure of the expression level of a single gene in a sample, while RlogNormalized is a measure of the relative expression levels of all genes in a sample.
+
+#Principal Component Analysis
+help(plotPCA)
+Overallpca<-plotPCA(RlogDds)
+pca<-Overallpca+theme_light()+ggtitle("rlog Transformed Read Counts")
+plot(pca)
+
+# if ggplot2 is not working
+
+pca2<-prcomp(t(logOfNormalizedCounts))
+
+plot(pca2$x[,1:2], col=c(1,1,2,2), pch=16, main = 'log Transformed Read Counts', xlab= paste("PC1 % explained var = ", round((pca2$sdev^2)[1]*100/sum(pca2$sdev^2), digits=2)),ylab= paste("PC2 % explained var = ", round((pca2$sdev^2)[2]*100/sum(pca2$sdev^2), digits=2)))
+legend("topleft",legend= c("Control", "KO"), col=1:2, pch=16, cex=0.8)
+##QUESTION 8: Please comment on the PCA about the samples and their
+## distribution among groups.
+## For pca2, Control group is between -10 and 10, while KO group is on the edges -30> or >+30
+## For pca1, Control group is between -40 and -30, while KO group is on the edges, close to 40
+
+#clustering(dendogram)
+distBetw<-as.dist(1-cor(RlogNormalized,method="pearson"))
+plot(hclust(distBetw),labels=colnames(RlogNormalized),main="rlog Transformed Read Counts \n distance: pearson correlation")
+## QUESTION 9: Does hclust suppor the findings from PCA? Explain
+## Yes. KO and Control groups are on the different branches. However, it does not give the same visual information of PCA.
+
+#heatmap based on DESeq2 analysis
+install.packages("NMF")
+library(NMF)
+
+deseq<-DESeq(dseqdataset)
+result <- results(deseq, independentFiltering = TRUE , alpha = 0.05)
+
+sorted.Dseq<- result[order(result$pvalue), ]
+DGEgenes <- rownames(subset(sorted.Dseq , pvalue < 0.0005))
+heatmapDGEgenes <- logOfNormalizedCounts[DGEgenes , ]
+help(aheatmap)
+
+
+#to see the heatmap
+aheatmap(heatmapDGEgenes ,Rowv = TRUE , Colv = TRUE,distfun = "euclidean", hclustfun = "average",scale="row")
+
+##QUESTION 10: generate the heatmap using RlogNormalized and comment
+## on if there are differences
+RNormalizedDGEgenes <- RlogNormalized[DGEgenes , ]
+aheatmap(RNormalizedDGEgenes ,Rowv = TRUE , Colv = TRUE,distfun = "euclidean", hclustfun = "average",scale="row")
+## Controls and KO's have opposite values.
+## In RlogNormalized, the values of the controls and KO's are changes more often to the opposite value which changes the heatmap colors.
+
+# if NMF or ggplot is not working
+heatmap(heatmapDGEgenes)p

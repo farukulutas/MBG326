@@ -1,0 +1,57 @@
+# Ahmet Faruk Ulutaþ
+# Computer could not open it as RMarkdown
+# Coputer could not save it as R. Thus, uploaded as txt.
+# read protein.csv
+x <- read.csv("protein.csv")
+
+# function 1
+faruk_fn1 <- function(matrix, k) {
+  clusters <- kmeans(matrix, k, nstart = 50)
+  clusters$cluster <- as.factor(clusters$cluster) 
+  boxplot(matrix, col = clusters$cluster)
+}
+
+# normal matrix shows clustering the proteins
+faruk_fn1(x, 2)
+# transposed matrix shows the clusters
+faruk_fn1(t(x), 2)
+
+# when k increased, there are more clusters which defines their features better.
+# It is like focusing on more fetatures and get more detailed result.
+faruk_fn1(x, 3)
+faruk_fn1(t(x), 3)
+
+# function 2
+faruk_fn2 <- function(matrix, method) {
+  cluster <- hclust(dist(matrix, method = method))
+  return(cluster)
+}
+
+# normal matrix shows clustering the proteins
+plot(faruk_fn2(x, "euclidean"))
+# transposed matrix shows the clusters
+plot(faruk_fn2(t(x), "euclidean"))
+
+# when manhattan method used height increases
+plot(faruk_fn2(x, "manhattan"))
+plot(faruk_fn2(t(x), "manhattan"))
+
+# function 3
+faruk_fn3 <- function(matrix) {
+  pca <- prcomp(t(matrix), scale=TRUE)
+  scores <- pca$x
+  plot( scores[,1], scores[,2], xlab ="PC1", ylab="PC2")
+  text(scores[,1]+0.005, scores[,2] + 0.003,labels= rownames(matrix), pos=4)
+}
+
+faruk_fn3(x)
+
+#We can make fn4 by using fn1,fn2,fn3 respectively.
+#These are the steps to make PCA.
+
+faruk_fn4 <- function(matrix, k, method) {
+  faruk_fn1(matrix, k)
+  faruk_fn2(matrix, method)
+  faruk_fn3(matrix)
+}
+
